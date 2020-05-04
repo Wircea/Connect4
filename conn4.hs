@@ -9,7 +9,7 @@ board = replicate (6*7) (0::Int)
 
 data CurrentBoard = Board [Int] Int Int deriving Show --order is HEIGHT then WIDTH
 data C4Command = Place Int | WhoAmI | Surrener deriving (Show, Read, Eq)
-data GameOption = StartGame | TableSize Int Int deriving (Show, Read, Eq)
+data GameOption = StartGame | TableSize Int Int | Exit deriving (Show, Read, Eq)
 
 
 ----implementation
@@ -71,17 +71,16 @@ optionCheck:: CurrentBoard -> GameOption -> IO()
 optionCheck (Board b h w) StartGame = do 
                                        putStrLn "\ESC[2J"
                                        startGame(Board b h w)
-optionCheck (Board b h w) (TableSize y x) = do 
-                                             putStrLn "\ESC[2J"
+optionCheck (Board b h w) (TableSize y x) = do
                                              changeBoardSize y x
+optionCheck (Board b h w) (Exit) = do
+                                    exitProg
 
 
 preGame:: CurrentBoard -> IO()
 preGame (Board b h w) = do
-                         putStrLn "\ESC[2J"
-                         putStr ("\nTable dimensions are [" ++ show h ++ "x" ++ show w ++ "].\n\n")
                          putStrLn (showTable (Board b h w))
-                         putStrLn "\nCommands: \n\n\t-StartGame \n\t-TableSize height width" 
+                         putStrLn "\nCommands: \n\n\t-StartGame \n\t-TableSize height width\n\t-Exit" 
                          input1 <- getLine
                          let comm = (read input1 :: GameOption)
                          optionCheck (Board b h w) comm
@@ -94,11 +93,16 @@ changeBoardSize a b | a>=4 && b>=4 = do
                        let h = a
                        let b = replicate (h * w) (0::Int)
                        putStr "\ESC[2J"
+                       putStr ("\nTable dimensions set to [" ++ show h ++ "x" ++ show w ++ "].\n\n")
                        preGame(Board b h w)
                        return ()
 changeBoardSize a b = changeBoardSize 6 7
 
+exitProg :: IO()
+exitProg = putStr "Exiting...\n"
+
 main = do
+       putStrLn "\ESC[2J"
        preGame (Board board 6 7)
-       
+       putStr "Successfully quit.\n"
        
