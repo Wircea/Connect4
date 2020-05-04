@@ -4,10 +4,12 @@ type RowInput = Int
 
 --width = 7
 --height = 6
-board = replicate 6 $ replicate 7 (0::Int) --set board to 0
+--board = replicate 6 $ replicate 7 (0::Int) --set board to 0
+board = replicate (6*7) (0::Int)
 
-data CurrentBoard = Board [[Int]] Int Int deriving Show --order is HEIGHT then WIDTH
+data CurrentBoard = Board [Int] Int Int deriving Show --order is HEIGHT then WIDTH
 data C4Command = Place Int | WhoAmI | Surrener deriving (Show, Read, Eq)
+data GameOption = StartGame | TableSize Int Int deriving (Show, Read, Eq)
 
 
 ----implementation
@@ -18,7 +20,7 @@ getTableSymbol 1 = "██"
 getTableSymbol 2 = "▒▒"
 
 getTableValue :: CurrentBoard -> Int -> [Char] --determine what's printed
-getTableValue (Board b h w) x = getTableSymbol (b!!  (x `div` w)!! (x `mod` w))
+getTableValue (Board b h w) x = getTableSymbol (b !!  x)
 
 tableFooter :: Int -> Int -> [Char]
 tableFooter w x | x == w-1 = if x<10 then "   " ++ show x else "  " ++ show x
@@ -36,7 +38,7 @@ showTable (Board b h w) = parseTable (Board b h w) 0
 
 --check if empty
 getTableNumericValue :: Int -> Int -> Int
-getTableNumericValue y x = board!!y !!x
+getTableNumericValue y x = board!! (y * x)
 
 pieceExists :: Int->Int->Bool
 pieceExists y x =  if(getTableNumericValue y x /= 0) then True else False
@@ -64,20 +66,39 @@ startGame:: CurrentBoard -> IO()
 startGame (Board b h w) = do
                           putStrLn (showTable (Board b h w))
                           playerTurn (Board b h w) 1
+
+optionCheck:: CurrentBoard -> GameOption -> IO()
+optionCheck (Board b h w) StartGame = do 
+                                       putStrLn "\ESC[2J"
+                                       startGame(Board b h w)
+optionCheck (Board b h w) (TableSize y x) = do 
+                                             putStrLn "\ESC[2J"
+                                             changeBoardSize y x
+
+
+preGame:: CurrentBoard -> IO()
+preGame (Board b h w) = do
+                         putStrLn "\ESC[2J"
+                         putStr ("\nTable dimensions are [" ++ show h ++ "x" ++ show w ++ "].\n\n")
+                         putStrLn (showTable (Board b h w))
+                         putStrLn "\nCommands: \n\n\t-StartGame \n\t-TableSize height width" 
+                         input1 <- getLine
+                         let comm = (read input1 :: GameOption)
+                         optionCheck (Board b h w) comm
+
 ----debug functions
 
 changeBoardSize :: Int -> Int -> IO()
 changeBoardSize a b | a>=4 && b>=4 = do
                        let w = b 
                        let h = a
-                       let b = replicate h $ replicate w (0::Int)
+                       let b = replicate (h * w) (0::Int)
                        putStr "\ESC[2J"
-                       putStr ("\nTable dimensions set to [" ++ show h ++ "x" ++ show w ++ "].\n\n")
-                       startGame(Board b h w)
+                       preGame(Board b h w)
                        return ()
 changeBoardSize a b = changeBoardSize 6 7
 
 main = do
-       startGame (Board board 6 7)
+       preGame (Board board 6 7)
        
        
