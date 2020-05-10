@@ -16,8 +16,8 @@ data GameOption = StartGame | TableSize Int Int | Exit deriving (Show, Read, Eq)
 --table printing
 getTableSymbol :: Int -> [Char] --Legend
 getTableSymbol 0 = "[]"
-getTableSymbol 1 = "██"
-getTableSymbol 2 = "▒▒"
+getTableSymbol 1 = "\x1b[36m██\x1b[0m"
+getTableSymbol 2 = "\x1b[31m██\x1b[0m"
 
 getTableValue :: CurrentBoard -> Int -> [Char] --determine what's printed
 getTableValue (Board b h w) x = getTableSymbol (b !!  x)
@@ -37,22 +37,44 @@ showTable :: CurrentBoard -> [Char] --root
 showTable (Board b h w) = parseTable (Board b h w) 0
 
 --check if empty
-getTableNumericValue :: Int -> Int -> Int
-getTableNumericValue y x = board!! (y * x)
+getTableNumericValue :: CurrentBoard -> Int -> Int 
+getTableNumericValue (Board b h w) a = b!! a
 
-pieceExists :: Int->Int->Bool
-pieceExists y x =  if(getTableNumericValue y x /= 0) then True else False
+pieceExists :: CurrentBoard -> Int -> Bool
+pieceExists (Board b h w) a =  if(getTableNumericValue (Board b h w) a /= 0) then True else False
 
---changeIntoToken :: Int -> Int -> Int -> IO()
---changeIntoToken y x b = do
-                        --board = replicate height $ replicate width (1::Int)
---                        putStrLn (showTable)
+--table altering
+alterTable :: CurrentBoard -> Int -> Int -> Int -> [Int] -- board, player, pos of placement, current pos
+alterTable (Board b h w) p x a | a > h*w-1 = []
+alterTable (Board b h w) p x a | a == x = [p] ++ alterTable (Board b h w) p x (a+1)
+alterTable (Board b h w) p x a = [b!! (a)] ++ alterTable (Board b h w) p x (a+1)
 
+newTable :: CurrentBoard -> Int -> Int -> CurrentBoard
+newTable (Board b h w) p x = (Board (alterTable (Board b h w) p x 0 ) h w)
+
+--game flow
+nextTurn :: Int -> Int
+nextTurn 1 = 2
+nextTurn 2 = 1
+
+placementProcess :: CurrentBoard -> Int -> Int -> IO() -- board, player, position
+placementProcess (Board b h w) p x | x < 0 = do 
+                                              putStrLn ("Invalid move")
+                                              playerTurn (Board b h w) p
+placementProcess (Board b h w) p x = if (pieceExists (Board b h w) x == True) then  placementProcess (Board b h w) p (x-w) else do
+                                                                                                                                 putStrLn ("\ESC[2J")
+                                                                                                                                 let newBoard = newTable (Board b h w) p x
+                                                                                                                                 putStrLn (showTable (newBoard))
+                                                                                                                                 playerTurn newBoard (nextTurn p)
 
 execCommand :: CurrentBoard -> Int  -> C4Command -> IO()
-execCommand (Board b h w) y comm | comm == WhoAmI  = do 
-                                                     putStrLn ("You are Player" ++ (show y))
+execCommand (Board b h w) y (WhoAmI)  = do 
+                                                     putStrLn ("You are Player" ++ (show y) ++ "(" ++ (getTableSymbol y) ++ ")")
                                                      playerTurn (Board b h w) y
+execCommand (Board b h w) y (Place x) =if (x<0 || x>=w) then playerTurn (Board b h w) y else
+                                       do
+                                       placementProcess (Board b h w) y (w*(h-1)+x)
+                                       
                                                  
 playerTurn :: CurrentBoard -> Int -> IO()
 playerTurn (Board b h w) y = do
