@@ -25,7 +25,7 @@ getTableValue (Board b h w) x = getTableSymbol (b !!  x)
 tableFooter :: Int -> Int -> [Char]
 tableFooter w x | x == w-1 = if x<10 then "   " ++ show x else "  " ++ show x
 tableFooter w x | x == 0 = (replicate (w*4) '-') ++ "\n" ++ show x ++ tableFooter w (x+1)
-tableFooter w x | x < 11 = "   " ++ show x ++ tableFooter w (x+1)
+tableFooter w x | x < 11 = "   " ++ show x ++ tableFooter w (x+1) -- handler for printing one digit numbers
 tableFooter w x = "  " ++ show x ++ tableFooter w (x+1)
 
 parseTable :: CurrentBoard -> Int -> [Char] --formatting by row
@@ -42,6 +42,17 @@ getTableNumericValue (Board b h w) a = b!! a
 
 pieceExists :: CurrentBoard -> Int -> Bool
 pieceExists (Board b h w) a =  if(getTableNumericValue (Board b h w) a /= 0) then True else False
+
+--win conditions
+
+
+checkDOWN :: CurrentBoard -> Int -> Int -> Int -- board, player, position
+checkDOWN (Board b h w) p a | ((b!!a) == p) = if( (a + w) < h*w) then (1 + checkDOWN (Board b h w) p (a + w)) else 0
+checkDOWN (Board b h w) p a = 0
+
+checkWin :: CurrentBoard -> Int -> Int -> Bool -- board, player, position
+checkWin (Board b h w) p a = if ((1 + (checkDOWN (Board b h w) p a)) >=4 ) then True --vertical case. going UP does not make sense as the check will always be downwards 
+                             else False
 
 --table altering
 alterTable :: CurrentBoard -> Int -> Int -> Int -> [Int] -- board, player, pos of placement, current pos
@@ -65,7 +76,9 @@ placementProcess (Board b h w) p x = if (pieceExists (Board b h w) x == True) th
                                                                                                                                  putStrLn ("\ESC[2J")
                                                                                                                                  let newBoard = newTable (Board b h w) p x
                                                                                                                                  putStrLn (showTable (newBoard))
-                                                                                                                                 playerTurn newBoard (nextTurn p)
+                                                                                                                                 
+                                                                                                                                 if(checkWin (newBoard) p x == True ) then putStrLn ("Player" ++ show p ++ "(" ++ (getTableSymbol p) ++ ") wins" )
+                                                                                                                                 else playerTurn newBoard (nextTurn p)
 
 execCommand :: CurrentBoard -> Int  -> C4Command -> IO()
 execCommand (Board b h w) y (WhoAmI)  = do 
