@@ -44,16 +44,41 @@ pieceExists :: CurrentBoard -> Int -> Bool
 pieceExists (Board b h w) a =  if(getTableNumericValue (Board b h w) a /= 0) then True else False
 
 --win conditions
-
-
+------case vertical
 checkDOWN :: CurrentBoard -> Int -> Int -> Int -- board, player, position
-checkDOWN (Board b h w) p a | ((b!!a) == p) = if( (a + w) < h*w) then (1 + checkDOWN (Board b h w) p (a + w)) else 0
+checkDOWN (Board b h w) p a | ((b!!a) == p) = if( (a + w) < h*w) then (1 + checkDOWN (Board b h w) p (a + w)) else 1
 checkDOWN (Board b h w) p a = 0
+------case horizontal
+checkLEFT :: CurrentBoard -> Int -> Int -> Int -- board, player, position
+checkLEFT (Board b h w) p a | ((b!!a) == p) = if( (a - 1 ) >=0 && ( (a `div` w) == ((a - 1) `div` w)) ) then (1 + checkLEFT (Board b h w) p (a - 1)) else 1
+checkLEFT (Board b h w) p a = 0
+
+checkRIGHT :: CurrentBoard -> Int -> Int -> Int -- board, player, position
+checkRIGHT (Board b h w) p a | ((b!!a) == p) = if( (a + 1 ) < w*h && ( (a `div` w) == ((a + 1) `div` w)) ) then (1 + checkRIGHT (Board b h w) p (a + 1)) else 1
+checkRIGHT (Board b h w) p a = 0
+------case \
+checkUPLEFT :: CurrentBoard -> Int -> Int -> Int -- board, player, position
+checkUPLEFT (Board b h w) p a | ((b!!a) == p) = if( (a - w - 1 ) >=0 && ( (a `div` w) == (((a - w - 1) `div` w)+1)) ) then (1 + checkUPLEFT (Board b h w) p (a - w- 1)) else 1
+checkUPLEFT (Board b h w) p a = 0
+
+checkDOWNRIGHT :: CurrentBoard -> Int -> Int -> Int -- board, player, position
+checkDOWNRIGHT (Board b h w) p a | ((b!!a) == p) = if( (a + w + 1 ) < w*h && ( (a `div` w) == (((a + w + 1) `div` w)-1)) ) then (1 + checkDOWNRIGHT (Board b h w) p (a + w + 1)) else 1
+checkDOWNRIGHT (Board b h w) p a = 0
+------case /
+checkDOWNLEFT :: CurrentBoard -> Int -> Int -> Int -- board, player, position
+checkDOWNLEFT (Board b h w) p a | ((b!!a) == p) = if( (a + w - 1 ) < w*h && ( (a `div` w) == (((a + w - 1) `div` w)-1)) ) then (1 + checkDOWNLEFT (Board b h w) p (a + w- 1)) else 1
+checkDOWNLEFT (Board b h w) p a = 0
+
+checkUPRIGHT :: CurrentBoard -> Int -> Int -> Int -- board, player, position
+checkUPRIGHT (Board b h w) p a | ((b!!a) == p) = if( (a - w + 1 ) >= 0 && ( (a `div` w) == (((a - w + 1) `div` w)+1)) ) then (1 + checkUPRIGHT (Board b h w) p (a - w + 1)) else 1
+checkUPRIGHT (Board b h w) p a = 0
 
 checkWin :: CurrentBoard -> Int -> Int -> Bool -- board, player, position
-checkWin (Board b h w) p a = if ((1 + (checkDOWN (Board b h w) p a)) >=4 ) then True --vertical case. going UP does not make sense as the check will always be downwards 
+checkWin (Board b h w) p a = if (( (checkDOWN (Board b h w) p a)) >=4 ) then True --vertical case. going UP does not make sense as the check will always be downwards 
+                             else if ( - 1 + (checkLEFT(Board b h w) p a) + (checkRIGHT(Board b h w) p a) >=4 ) then True --the starting point will be counted twice. same below 
+                             else if ( - 1 + (checkUPLEFT (Board b h w) p a) + (checkDOWNRIGHT(Board b h w) p a) >=4 ) then True
+                             else if ( - 1 + (checkDOWNLEFT (Board b h w) p a) + (checkUPRIGHT(Board b h w) p a) >=4 ) then True
                              else False
-
 --table altering
 alterTable :: CurrentBoard -> Int -> Int -> Int -> [Int] -- board, player, pos of placement, current pos
 alterTable (Board b h w) p x a | a > h*w-1 = []
