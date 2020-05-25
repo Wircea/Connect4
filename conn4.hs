@@ -8,9 +8,9 @@ type RowInput = Int
 board = replicate (6*7) (0::Int)
 
 data CurrentBoard = Board [Int] Int Int Int Int deriving Show --order is HEIGHT then WIDTH, followed by filled squares and number of players
-data C4Command = Place Int | WhoAmI | Surrener deriving (Show, Read, Eq)
+data C4Command = Place Int | WhoAmI | Surrender deriving (Show, Read, Eq)
 data GameOption = StartGame | TableSize Int Int | PlayerCount Int | Exit deriving (Show, Read, Eq)
-
+data EndGameOption = Menu | Rematch deriving (Show, Read, Eq)
 
 ----implementation
 --table printing
@@ -115,8 +115,12 @@ placementProcess (Board b h w f np) p x = if (pieceExists (Board b h w f np) x =
                                                                                                                                  let newBoard = newTable (Board b h w (f+1) np) p x
                                                                                                                                  putStrLn (showTable (newBoard))
                                                                                                                                  
-                                                                                                                                 if(checkWin (newBoard) p x == True ) then putStrLn ("Player" ++ show p ++ "(" ++ (getTableSymbol p) ++ ") wins" )
-                                                                                                                                 else if(f+1 >= w*h ) then putStrLn("The players have tied")
+                                                                                                                                 if(checkWin (newBoard) p x == True ) then do
+                                                                                                                                 putStrLn ("Player" ++ show p ++ "(" ++ (getTableSymbol p) ++ ") wins" )
+                                                                                                                                 endGame (newBoard)
+                                                                                                                                 else if(f+1 >= w*h ) then do
+                                                                                                                                 putStrLn("The players have tied")
+                                                                                                                                 endGame (newBoard)
                                                                                                                                  else playerTurn newBoard (nextTurn p np)
 
 execCommand :: CurrentBoard -> Int  -> C4Command -> IO()
@@ -126,11 +130,15 @@ execCommand (Board b h w f np) y (WhoAmI)  = do
 execCommand (Board b h w f np) y (Place x) =if (x<0 || x>=w) then playerTurn (Board b h w f np) y else
                                        do
                                        placementProcess (Board b h w f np) y (w*(h-1)+x)
+execCommand (Board b h w f np) y (Surrender) = do 
+                                              putStrLn ("Player" ++ (show y) ++ "(" ++ (getTableSymbol y) ++ ") ends the game by surrendering") --unfair in 3+ player mode. use as safe exit instead
+                                              endGame (Board b h w f np)
+                                              
                                        
                                                  
 playerTurn :: CurrentBoard -> Int -> IO()
 playerTurn (Board b h w f np) y = do
-                          putStrLn (">")
+                          putStrLn ("\nCommands:\n\t-Place x\n\t-WhoAmI\n\t-\x1b[31mSurrender\x1b[0m\n")
                           input1 <- getLine
                           let comm = (read input1 :: C4Command) 
                           execCommand (Board b h w f np) y comm
@@ -157,7 +165,7 @@ preGame:: CurrentBoard -> IO()
 preGame (Board b h w f np) = do
                          putStrLn (showTable (Board b h w f np))
                          putStrLn (showPlayers np)
-                         putStrLn "\nCommands: \n\n\t-StartGame \n\t-TableSize height width\n\t-PlayerCount count (2-5) \n\t-Exit" 
+                         putStrLn "\nCommands: \n\n\t-StartGame \n\t-TableSize height width\n\t-PlayerCount count (2-5) \n\t-\x1b[31mExit\x1b[0m" 
                          input1 <- getLine
                          let comm = (read input1 :: GameOption)
                          optionCheck (Board b h w f np) comm
@@ -182,6 +190,19 @@ changeBoardSize a b np = changeBoardSize 6 7 np
 exitProg :: IO()
 exitProg = putStr "Exiting...\n"
 
+----endgame
+
+endGameCommand :: CurrentBoard -> EndGameOption -> IO()
+endGameCommand (Board b h w f np) Rematch = startGame (Board b h w f np)
+endGameCommand (Board b h w f np) Menu = preGame (Board b h w f np)
+
+endGame :: CurrentBoard -> IO()
+endGame (Board b h w f np) = do
+                            putStr ("\n\x1b[33mRematch?\x1b[0m\n-Rematch\n-Menu\n>")
+                            input1 <- getLine
+                            let comm = (read input1 :: EndGameOption)
+                            putStr "\ESC[2J"
+                            endGameCommand (Board (replicate (h * w) (0::Int)) h w 0 np) comm
 main = do
        putStrLn "\ESC[2J"
        preGame (Board board 6 7 0 2)
