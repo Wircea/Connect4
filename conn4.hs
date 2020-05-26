@@ -138,6 +138,7 @@ execCommand (Board b h w f np) y (Surrender) = do
                                                  
 playerTurn :: CurrentBoard -> Int -> IO()
 playerTurn (Board b h w f np) y = do
+                          putStrLn ("You are Player" ++ (show y) ++ "(" ++ (getTableSymbol y) ++ ")")
                           putStrLn ("\nCommands:\n\t-Place x\n\t-WhoAmI\n\t-\x1b[31mSurrender\x1b[0m\n")
                           input1 <- getLine
                           let comm = (read input1 :: C4Command) 
