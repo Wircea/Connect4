@@ -2,8 +2,6 @@
 type Turn = Int
 type RowInput = Int
 
---width = 7
---height = 6
 --board = replicate 6 $ replicate 7 (0::Int) --set board to 0
 board = replicate (6*7) (0::Int)
 
@@ -26,6 +24,7 @@ getTableSymbol x = "??"
 getTableValue :: CurrentBoard -> Int -> [Char] --determine what's printed
 getTableValue (Board b h w f np) x = getTableSymbol (b !!  x)
 
+--print column number under the board
 tableFooter :: Int -> Int -> [Char]
 tableFooter w x | x == w-1 = if x<10 then "   " ++ show x else "  " ++ show x
 tableFooter w x | x == 0 = (replicate (w*4) '-') ++ "\n" ++ show x ++ tableFooter w (x+1)
@@ -55,7 +54,7 @@ getTableNumericValue (Board b h w f np) a = b!! a
 pieceExists :: CurrentBoard -> Int -> Bool
 pieceExists (Board b h w f np) a =  if(getTableNumericValue (Board b h w f np) a /= 0) then True else False
 
---win conditions
+-------------win conditions
 ------case vertical
 checkDOWN :: CurrentBoard -> Int -> Int -> Int -- board, player, position
 checkDOWN (Board b h w f np) p a | ((b!!a) == p) = if( (a + w) < h*w) then (1 + checkDOWN (Board b h w f np) p (a + w)) else 1
@@ -91,38 +90,41 @@ checkWin (Board b h w f np) p a = if (( (checkDOWN (Board b h w f np) p a)) >=4 
                              else if ( - 1 + (checkUPLEFT (Board b h w f np) p a) + (checkDOWNRIGHT(Board b h w f np) p a) >=4 ) then True
                              else if ( - 1 + (checkDOWNLEFT (Board b h w f np) p a) + (checkUPRIGHT(Board b h w f np) p a) >=4 ) then True
                              else False
---table altering
+----table altering
+--gradually reconstruct the table
 alterTable :: CurrentBoard -> Int -> Int -> Int -> [Int] -- board, player, pos of placement, current pos
 alterTable (Board b h w f np) p x a | a > h*w-1 = []
 alterTable (Board b h w f np) p x a | a == x = [p] ++ alterTable (Board b h w f np) p x (a+1)
 alterTable (Board b h w f np) p x a = [b!! (a)] ++ alterTable (Board b h w f np) p x (a+1)
 
+--remake table
 newTable :: CurrentBoard -> Int -> Int -> CurrentBoard
 newTable (Board b h w f np) p x = (Board (alterTable (Board b h w f np) p x 0 ) h w f np)
 
---game flow
+----game flow
+--determine whose turn it is by wraping around 1-[maxplayers]
 nextTurn :: Int -> Int -> Int
 nextTurn p np | p<np = p+1
 nextTurn p np = 1
 
-
+--placement logic
 placementProcess :: CurrentBoard -> Int -> Int -> IO() -- board, player, position
-placementProcess (Board b h w f np) p x | x < 0 = do 
+placementProcess (Board b h w f np) p x | x < 0 = do --check for illegal moves (negative numbers or numbers higher than the table width)
                                               putStrLn ("Invalid move")
-                                              playerTurn (Board b h w f np) p
-placementProcess (Board b h w f np) p x = if (pieceExists (Board b h w f np) x == True) then  placementProcess (Board b h w f np) p (x-w) else do
+                                              playerTurn (Board b h w f np) p --return to the same player
+placementProcess (Board b h w f np) p x = if (pieceExists (Board b h w f np) x == True) then  placementProcess (Board b h w f np) p (x-w) else do --accepted placement.Will gradully increase height if full
                                                                                                                                  putStrLn ("\ESC[2J")
                                                                                                                                  let newBoard = newTable (Board b h w (f+1) np) p x
                                                                                                                                  putStrLn (showTable (newBoard))
-                                                                                                                                 
+                                                                                                                                 --check if game ended
                                                                                                                                  if(checkWin (newBoard) p x == True ) then do
                                                                                                                                  putStrLn ("Player" ++ show p ++ "(" ++ (getTableSymbol p) ++ ") wins" )
-                                                                                                                                 endGame (newBoard)
+                                                                                                                                 endGame (newBoard) --end game
                                                                                                                                  else if(f+1 >= w*h ) then do
                                                                                                                                  putStrLn("The players have tied")
-                                                                                                                                 endGame (newBoard)
-                                                                                                                                 else playerTurn newBoard (nextTurn p np)
-
+                                                                                                                                 endGame (newBoard) --end game
+                                                                                                                                 else playerTurn newBoard (nextTurn p np) --continue game
+--determine command
 execCommand :: CurrentBoard -> Int  -> C4Command -> IO()
 execCommand (Board b h w f np) y (WhoAmI)  = do 
                                                      putStrLn ("You are Player" ++ (show y) ++ "(" ++ (getTableSymbol y) ++ ")")
